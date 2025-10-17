@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Edit Profile | BREAKWAY GAS SUPPLY</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    .profile-pic-container {
+      position: relative;
+      width: 120px;
+      height: 120px;
+      margin: 0 auto 20px;
+    }
+    #profilePicPreview {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 3px solid var(--accent);
+    }
+    .profile-pic-input {
+      display: none;
+    }
+    #uploadPicBtn {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      background: var(--accent-strong);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-sidebar">
+    <h1>BREAKWAY<br>GAS SUPPLY</h1>
+  </div>
+  <div class="page-content" style="position:relative;">
+    <button type="button" id="backBtn" class="back-btn">← Back</button>
+    <div class="card">
+      <div class="card-header">
+        <h1>Edit Your Profile</h1>
+      </div>
+      <form id="editProfileForm">
+        <div class="profile-pic-container">
+          <img id="profilePicPreview" src="https://via.placeholder.com/120" alt="Profile Picture" style="background-color: rgba(255, 255, 255, 0.1);">
+          <input type="file" id="profilePicInput" class="profile-pic-input" accept="image/*">
+          <label for="profilePicInput" id="uploadPicBtn" title="Upload new picture">✏️</label>
+        </div>
+        <div class="form-group">
+          <label for="editName">Full Name</label>
+          <input type="text" id="editName" required />
+        </div>
+        <div class="form-group">
+          <label for="editEmail">Email Address</label>
+          <input type="email" id="editEmail" placeholder="Add your email" />
+        </div>
+        <div class="form-group">
+          <label for="editAddress">Default Delivery Address</label>
+          <div class="address-grid">
+            <div class="form-group" style="grid-column: 1 / -1;">
+              <input type="text" id="addressStreet" placeholder="Street Name / House No." />
+            </div>
+            <div class="form-group">
+              <input type="text" id="addressVillage" placeholder="Village / Town" />
+            </div>
+            <div class="form-group">
+              <input type="text" id="addressState" placeholder="State" />
+            </div>
+            <div class="form-group">
+              <input type="text" id="addressDistrict" placeholder="District" />
+            </div>
+            <div class="form-group">
+              <input type="text" id="addressPincode" placeholder="Pincode" pattern="\d{6}" />
+            </div>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-submit">Save Changes</button>
+      </form>
+    </div>
+  </div>
+  <script src="../js/main.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const currentUserId = sessionStorage.getItem('currentUserId');
+      if (!currentUserId) {
+        window.location.href = 'index.html'; // Redirect if not logged in
+        return;
+      }
+
+      const nameInput = document.getElementById('editName');
+      const emailInput = document.getElementById('editEmail');
+      const picPreview = document.getElementById('profilePicPreview');
+      const picInput = document.getElementById('profilePicInput');
+      const streetInput = document.getElementById('addressStreet');
+      const villageInput = document.getElementById('addressVillage');
+      const pincodeInput = document.getElementById('addressPincode');
+      const stateSelect = document.getElementById('addressState');
+      const districtSelect = document.getElementById('addressDistrict');
+      let currentUser = null;
+
+      // --- Load user data from localStorage ---
+      const users = JSON.parse(localStorage.getItem('users') || '[]');
+      const userIndex = users.findIndex(u => u.id === currentUserId);
+      currentUser = users[userIndex];
+
+      if (currentUser) {
+        nameInput.value = currentUser.name || '';
+        emailInput.value = currentUser.email || '';
+        if (currentUser.address && typeof currentUser.address === 'object') {
+          streetInput.value = currentUser.address.street || '';
+          villageInput.value = currentUser.address.village || '';
+          pincodeInput.value = currentUser.address.pincode || '';
+          stateSelect.value = currentUser.address.state || '';
+          districtSelect.value = currentUser.address.district || '';
+        }
+        if (currentUser.profilePic) {
+          picPreview.src = currentUser.profilePic;
+        }
+      }
+
+      // --- Dynamic State/District Logic ---
+
+      // Handle profile picture selection
+      picInput.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            picPreview.src = e.target.result;
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+
+      // Handle form submission
+      document.getElementById('editProfileForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const emailValue = emailInput.value.trim();
+        if (emailValue && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailValue)) {
+          showToast('Please enter a valid email address.', 'error');
+          return;
+        }
+
+        // --- Save user data to localStorage ---
+        if (userIndex !== -1) {
+          users[userIndex].name = nameInput.value;
+          users[userIndex].email = emailInput.value;
+          users[userIndex].address = {
+            street: streetInput.value,
+            village: villageInput.value,
+            state: stateSelect.value,
+            district: districtSelect.value,
+            pincode: pincodeInput.value,
+          };
+          users[userIndex].profilePic = picPreview.src;
+
+          localStorage.setItem('users', JSON.stringify(users));
+
+          sessionStorage.setItem('loggedInUserName', nameInput.value); // Update session name
+          showToast('Profile updated successfully! Redirecting...', 'success');
+          setTimeout(() => {
+            window.location.href = 'dashboard.html';
+          }, 1500);
+        } else {
+          showToast('Could not find user to update.', 'error');
+        }
+      });
+
+      document.getElementById('backBtn').addEventListener('click', () => history.back());
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Account Verification | BREAKWAY GAS SUPPLY</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vanillajs-datepicker@1.3.4/dist/css/datepicker-bs5.min.css">
+</head>
+<body>
+  <div class="app-sidebar">
+    <h1>BREAKWAY<br>GAS SUPPLY</h1>
+  </div>
+  <div class="page-content">
+    <div class="card">
+      <div class="card-header">
+        <h1>Book Home Verification</h1>
+        <p>Please book a convenient time for our agent to visit your address for in-person KYC verification.</p>
+      </div>
+
+      <form id="slotBookingForm">
+        <div class="form-group">
+          <label for="verificationDate">Choose a Date</label>
+          <input type="text" id="verificationDate" placeholder="Select a date" required />
+        </div>
+        <div class="form-group">
+          <label for="verificationTime">Choose a Time Slot</label>
+          <select id="verificationTime" required>
+            <option value="" disabled selected>Select a time</option>
+            <option value="Morning (9am - 12pm)">Morning (9am - 12pm)</option>
+            <option value="Afternoon (1pm - 4pm)">Afternoon (1pm - 4pm)</option>
+            <option value="Evening (5pm - 7pm)">Evening (5pm - 7pm)</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-submit">Book Appointment</button>
+      </form>
+    </div>
+  </div>
+  <script src="../js/main.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vanillajs-datepicker@1.3.4/dist/js/datepicker-full.min.js"></script>
+  <script>
+    // Initialize Datepicker
+    const datepickerEl = document.getElementById('verificationDate');
+    const datepicker = new Datepicker(datepickerEl, {
+      autohide: true,
+      format: 'yyyy-mm-dd',
+      startDate: new Date(), // Disable past dates
+    });
+
+    document.getElementById('slotBookingForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const currentUserId = sessionStorage.getItem('currentUserId');
+      if (!currentUserId) {
+        showToast('You must be logged in to book a slot.', 'error');
+        return;
+      }
+
+      const verificationDate = document.getElementById('verificationDate').value;
+      const verificationTime = document.getElementById('verificationTime').value;
+
+      const users = JSON.parse(localStorage.getItem('users') || '[]');
+      const userIndex = users.findIndex(u => u.id === currentUserId);
+
+      if (userIndex !== -1) {
+        users[userIndex].kycStatus = 'slot-booked';
+        users[userIndex].verificationSlot = { date: verificationDate, time: verificationTime };
+        localStorage.setItem('users', JSON.stringify(users));
+
+        showToast('Appointment booked! Redirecting to dashboard...', 'success');
+        setTimeout(() => { window.location.href = 'dashboard.html'; }, 2000);
+      } else {
+        showToast('Could not find your user account.', 'error');
+      }
+    });
+  </script>
+</body>
+</html>

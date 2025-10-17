@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Track Order | BREAKWAY GAS SUPPLY</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <div class="app-sidebar">
+    <h1>BREAKWAY<br>GAS SUPPLY</h1>
+  </div>
+  <div class="page-content" style="position:relative;">
+    <button type="button" id="backBtn" class="back-btn">← Back</button>
+    <div class="card">
+      <div class="card-header">
+        <h1>Track Your Order</h1>
+        <p>View the status of all your past and current orders.</p>
+        <div class="toggle-container" style="margin-top: 15px; text-align: right;">
+          <label for="showAllOrdersToggle" style="margin-right: 10px; font-size: 14px;">Show All Orders</label>
+          <input type="checkbox" id="showAllOrdersToggle" />
+        </div>
+      </div>
+      <div id="allOrdersContainer">
+        <!-- Orders will be dynamically inserted here -->
+      </div>
+      <a href="dashboard.html" class="btn btn-dashboard">Back to Dashboard</a>
+    </div>
+  </div>
+  <script src="../js/main.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      function createTrackerHTML(order) {
+        const status = order.status || 'placed';
+        const orderStates = ['placed', 'processing', 'out-for-delivery', 'delivered'];
+        const idx = orderStates.indexOf(status);
+
+        const stepsHTML = orderStates.map((state, i) => {
+          const completedClass = i <= idx ? 'completed' : '';
+          // Capitalize first letter
+          const formattedState = state.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+          return `<div class="progress-step ${completedClass}"><span>${formattedState}</span></div>`;
+        }).join('');
+
+        return `
+          <div class="order-details" style="margin-top: 20px;">
+            <p><strong>Order ID:</strong> <span>${order.id}</span></p>
+            <p><strong>Cylinder Type:</strong> <span>${order.cylinderType || '—'}</span></p>
+            <p><strong>Total Amount:</strong> <span>${order.totalAmount ? `₹${order.totalAmount}` : '—'}</span></p>
+          </div>
+          <div class="progress-container">
+            ${stepsHTML}
+          </div>
+        `;
+      }
+
+      function loadAllOrders(showAll = false) {
+        const container = document.getElementById('allOrdersContainer');
+        const currentUserId = sessionStorage.getItem('currentUserId');
+
+        if (!currentUserId) {
+          container.innerHTML = '<p>Please log in to view your orders.</p>';
+          return;
+        }
+
+        const allOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+        let userOrders = allOrders.filter(o => o.userId === currentUserId);
+
+        if (!showAll) {
+          // By default, only show orders that are active
+          userOrders = userOrders.filter(o => !['delivered', 'cancelled'].includes(o.status));
+        }
+
+        if (userOrders.length > 0) {
+          // Show most recent first
+          container.innerHTML = userOrders.reverse().map(order => createTrackerHTML(order)).join('<hr style="margin: 30px 0; border-color: rgba(0,0,0,0.08);">');
+        } else {
+          container.innerHTML = showAll ? '<p>You have not placed any orders yet.</p>' : '<p>You have no active orders to track.</p>';
+        }
+      }
+
+      loadAllOrders();
+
+      const backBtn = document.getElementById('backBtn');
+      if (backBtn) {
+        backBtn.addEventListener('click', () => history.back());
+      }
+
+      document.getElementById('showAllOrdersToggle').addEventListener('change', (e) => {
+        loadAllOrders(e.target.checked);
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BREAKWAY GAS SUPPLY</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      padding-top: 0; /* Override style.css for this page */
+      overflow: hidden;
+    }
+    .splash-title {
+      font-size: 5vw; /* Adjust font size for longer text */
+      font-weight: 800;
+      color: #fff;
+      text-align: center;
+      letter-spacing: 2px;
+      animation: fadeIn 1.5s ease-out, slideOut 1s 2.5s ease-in-out forwards;
+    }
+    @keyframes slideOut {
+      to {
+        transform: translateX(-50vw) scale(0.5);
+        opacity: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1 class="splash-title">BREAKWAY<br>GAS SUPPLY</h1>
+  <script>
+    setTimeout(() => {
+      window.location.href = 'index.html';
+    }, 3000); // Wait 3 seconds before redirecting
+  </script>
+</body>
+</html>

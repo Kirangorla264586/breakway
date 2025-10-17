@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Create Account | BREAKWAY GAS SUPPLY 🏮</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <div class="app-sidebar">
+    <h1>BREAKWAY<br>GAS SUPPLY</h1>
+  </div>
+  <div class="page-content">
+    <div class="card">
+      <div class="card-header">
+        <h1>Create Your Account</h1>
+      </div>
+      <form id="registerForm">
+        <div class="form-group">
+          <label for="fullName">Full Name</label>
+          <input type="text" id="fullName" placeholder="Enter your full name" required />
+        </div>
+        <div class="form-group">
+          <label for="mobile">Mobile Number or Email</label>
+          <input type="text" id="mobile" placeholder="Enter 10 digit mobile number or email" required />
+        </div>
+        <div class="form-group">
+          <label for="password" style="display:flex; justify-content:space-between;">Set Password <span class="password-toggle">Show</span></label>
+          <input type="password" id="password" placeholder="Create a strong password" required />
+        </div>
+        <div class="form-group">
+          <label for="confirmPassword" style="display:flex; justify-content:space-between;">Confirm Password <span class="password-toggle">Show</span></label>
+          <input type="password" id="confirmPassword" placeholder="Re-enter password" required />
+        </div>
+        <button type="submit" class="btn btn-submit">Sign Up</button>
+      </form>
+      <p class="link-text">
+        <a href="index.html">Already have an account? Log In</a>
+      </p>
+    </div>
+  </div>
+  <script src="../js/main.js"></script>
+</body>
+</html>

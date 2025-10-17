@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Customer Support — BREAKWAY GAS</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    .ticket { padding:10px;border:1px solid rgba(0,0,0,0.06);border-radius:6px;margin-bottom:8px;background:var(--card-bg,#fff); }
+    .ticket h4{margin:0 0 6px 0}
+    .ticket-meta{font-size:12px;color:var(--muted,#666);margin-bottom:8px}
+    .ticket-actions{display:flex;gap:8px}
+  </style>
+</head>
+<body>
+  <div class="app-sidebar">
+    <h1>BREAKWAY<br>ADMIN</h1>
+  </div>
+  <div class="page-content" style="position:relative;">
+    <button class="back-btn" onclick="history.back()">← Back</button>
+    <div class="card" style="max-width: 900px; width: 95%; text-align: left;">
+      <div class="card-header" style="text-align: center;">
+        <h2>Support Desk</h2>
+        <p>This page is a standalone customer-care UI. Tickets are stored locally in your browser (localStorage).</p>
+      </div>
+      <div class="admin-section">
+        <form id="ticketForm" style="margin-bottom:12px">
+          <label style="display:block;margin-bottom:6px">Customer Name</label>
+          <input id="tName" placeholder="Customer name" required style="width:100%;padding:8px;margin-bottom:8px" />
+          <label style="display:block;margin-bottom:6px">Contact (mobile or email)</label>
+          <input id="tContact" placeholder="Mobile or email" required style="width:100%;padding:8px;margin-bottom:8px" />
+          <label style="display:block;margin-bottom:6px">Issue / Message</label>
+          <textarea id="tMsg" placeholder="Describe the issue" required style="width:100%;padding:8px;margin-bottom:8px"></textarea>
+          <div style="display:flex;gap:8px">
+            <button id="createTicket" class="btn">Create Ticket</button>
+            <button id="exportTickets" type="button" class="btn ghost">Export Tickets</button>
+            <button id="clearAll" type="button" class="btn danger">Clear All</button>
+          </div>
+        </form>
+        <h3>Open Tickets</h3>
+        <div id="ticketsList">Loading…</div>
+        <hr style="margin:12px 0">
+        <div id="ticketDetail" style="display:none">
+          <h3>Ticket Detail</h3>
+          <div id="detailHeader"></div>
+          <div id="detailThread" style="border:1px solid rgba(0,0,0,0.06);padding:10px;height:240px;overflow:auto;background:var(--card-bg,#fff);"></div>
+          <form id="replyForm" style="display:flex;gap:8px;margin-top:8px">
+            <input id="replyInput" placeholder="Reply as agent..." style="flex:1;padding:8px" />
+            <button class="btn">Send</button>
+          </form>
+          <div style="margin-top:8px"><button id="backToList" class="btn ghost">Back to list</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    function readTickets(){
+      try{ return JSON.parse(localStorage.getItem('supportTickets')||'[]') || []; }catch(e){ return []; }
+    }
+    function writeTickets(list){ try{ localStorage.setItem('supportTickets', JSON.stringify(list)); }catch(e){ console.warn('could not save tickets', e); } }
+    function renderTickets(){
+      var list = readTickets();
+      var out = '';
+      if (!list.length) { out = '<p class="text-muted">No tickets yet.</p>'; document.getElementById('ticketsList').innerHTML = out; return; }
+      list.slice().reverse().forEach(function(t){
+        out += '<div class="ticket" data-id="'+t.id+'" style="cursor:pointer">';
+        out += '<h4>' + escapeHtml(t.name) + ' <small style="font-weight:normal;color:#999">#' + (t.id||'') + '</small></h4>';
+        out += '<div class="ticket-meta">' + escapeHtml(t.contact || '') + ' — ' + (new Date(t.createdAt)).toLocaleString() + ' — <strong>' + (t.status||'open') + '</strong></div>';
+        out += '<div>' + escapeHtml(t.message) + '</div>';
+        out += '<div class="ticket-actions" style="margin-top:8px">';
+        if (t.status !== 'resolved') out += '<button data-action="resolve" data-id="'+t.id+'" class="btn">Resolve</button>';
+        out += '<button data-action="delete" data-id="'+t.id+'" class="btn ghost">Delete</button>';
+        out += '</div></div>';
+      });
+      document.getElementById('ticketsList').innerHTML = out;
+    }
+    function escapeHtml(s){ if (!s) return ''; return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c]; }); }
+    function genId(){ return 'T' + Date.now().toString(36) + Math.floor(Math.random()*1000); }
+    document.addEventListener('click', function(e){
+      var btn = e.target.closest('button[data-action]');
+      if (btn){
+        var id = btn.getAttribute('data-id');
+        var action = btn.getAttribute('data-action');
+        var list = readTickets();
+        var idx = list.findIndex(function(x){ return x.id === id; });
+        if (action === 'resolve' && idx !== -1){ list[idx].status = 'resolved'; writeTickets(list); renderTickets(); }
+        if (action === 'delete' && idx !== -1){ list.splice(idx,1); writeTickets(list); renderTickets(); }
+        return;
+      }
+      var ticketEl = e.target.closest('.ticket[data-id]');
+      if (ticketEl){
+        var id = ticketEl.getAttribute('data-id'); openTicketDetail(id); return;
+      }
+    });
+    function openTicketDetail(id){
+      var list = readTickets(); var t = list.find(function(x){ return x.id === id; });
+      if (!t) return; document.getElementById('ticketDetail').style.display = 'block';
+      document.getElementById('detailHeader').innerHTML = '<strong>'+escapeHtml(t.name)+'</strong> — '+escapeHtml(t.contact)+' — <em>'+ (t.status||'open') +'</em>';
+      renderDetailThread(t);
+      var replyForm = document.getElementById('replyForm');
+      replyForm.dataset.id = t.id;
+      document.getElementById('backToList').addEventListener('click', function(){ document.getElementById('ticketDetail').style.display='none'; });
+    }
+    function renderDetailThread(t){
+      var el = document.getElementById('detailThread'); var out='';
+      (t.thread||[]).forEach(function(m){ out += '<div style="margin-bottom:8px"><div style="font-size:12px;color:#666">'+(m.from==='agent'?'Support':'Customer')+' · '+(new Date(m.at)).toLocaleString()+'</div><div style="padding:8px;background:#f7f7f7;border-radius:6px">'+escapeHtml(m.text)+'</div></div>'; });
+      el.innerHTML = out || '<p class="text-muted">No messages yet.</p>';
+    }
+    document.addEventListener('DOMContentLoaded', function(){
+      renderTickets();
+      document.getElementById('createTicket').addEventListener('click', function(ev){
+        ev.preventDefault();
+        var name = document.getElementById('tName').value.trim();
+        var contact = document.getElementById('tContact').value.trim();
+        var msg = document.getElementById('tMsg').value.trim();
+        if (!name || !contact || !msg){ alert('Please fill all fields'); return; }
+        var list = readTickets();
+        var ticket = { id: genId(), name: name, contact: contact, message: msg, status: 'open', createdAt: new Date().toISOString(), thread:[{from:'customer',text:msg,at:new Date().toISOString()}] };
+        list.push(ticket); writeTickets(list); renderTickets();
+        document.getElementById('ticketForm').reset();
+      });
+      document.getElementById('exportTickets').addEventListener('click', function(){
+        try{ var list = readTickets(); var blob = new Blob([JSON.stringify(list,null,2)],{type:'application/json'}); var url = URL.createObjectURL(blob); var a=document.createElement('a'); a.href=url; a.download='support-tickets.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }catch(e){ alert('Export failed'); }
+      });
+      document.getElementById('clearAll').addEventListener('click', function(){ if (!confirm('Clear all tickets? This cannot be undone.')) return; localStorage.removeItem('supportTickets'); renderTickets(); });
+      document.getElementById('replyForm').addEventListener('submit', function(e){ e.preventDefault(); var id = this.dataset.id; if (!id) return; var text = document.getElementById('replyInput').value.trim(); if (!text) return; var list = readTickets(); var t = list.find(function(x){ return x.id === id; }); if (!t) return; t.thread = t.thread || []; t.thread.push({ from:'agent', text: text, at: new Date().toISOString() }); writeTickets(list); renderDetailThread(t); document.getElementById('replyInput').value = ''; renderTickets(); });
+    });
+  </script>
+</body>
+</html>

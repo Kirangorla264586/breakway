@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Settings | BREAKWAY GAS SUPPLY</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    .danger-zone {
+      border: 2px solid #ef4444;
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 30px;
+      background: rgba(239, 68, 68, 0.05);
+    }
+    .danger-zone h3 {
+      color: #ef4444;
+      margin-top: 0;
+    }
+    .btn-danger {
+      background-color: #ef4444;
+      color: white;
+    }
+    .btn-danger:hover {
+      background-color: #dc2626;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-sidebar">
+    <h1>BREAKWAY<br>GAS SUPPLY</h1>
+  </div>
+  <div class="page-content" style="position:relative;">
+    <button type="button" id="backBtn" class="back-btn">← Back</button>
+    <div class="card">
+      <div class="card-header">
+        <h1>Account Settings</h1>
+        <p>Manage your account preferences and data.</p>
+      </div>
+
+      <div class="danger-zone">
+        <h3>Danger Zone</h3>
+        <p>Deleting your account is permanent and cannot be undone. All your data, including order history, will be removed.</p>
+        <button id="deleteAccountBtn" class="btn btn-danger">Delete My Account</button>
+      </div>
+    </div>
+  </div>
+  <script src="../js/main.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const currentUserId = sessionStorage.getItem('currentUserId');
+      if (!currentUserId) {
+        window.location.href = 'index.html';
+        return;
+      }
+
+      document.getElementById('deleteAccountBtn').addEventListener('click', () => {
+        if (confirm('Are you absolutely sure you want to delete your account? This action is irreversible.')) {
+          const users = JSON.parse(localStorage.getItem('users') || '[]');
+          const updatedUsers = users.filter(u => u.id !== currentUserId);
+          localStorage.setItem('users', JSON.stringify(updatedUsers));
+
+          sessionStorage.clear();
+          showToast('Account deleted successfully.', 'success');
+          setTimeout(() => { window.location.href = 'index.html'; }, 2000);
+        }
+      });
+
+      document.getElementById('backBtn').addEventListener('click', () => history.back());
+    });
+  </script>
+</body>
+</html>

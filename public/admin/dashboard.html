@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Admin Dashboard — BREAKWAY GAS</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    .admin-section { background: var(--card-bg, #fff); padding: 28px; border-radius: 12px; margin-bottom: 28px; }
+    .admin-section h3 { margin-top: 0; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { padding: 8px 12px; border-bottom: 1px solid #eee; text-align: left; }
+    th { background: rgba(0,0,0,0.05); }
+    .stat { font-size: 22px; font-weight: 700; margin-right: 30px; }
+    .admin-topbar { font-size: 22px; font-weight: 700; padding: 16px; text-align: center; background: var(--accent, #ff8008); color: #fff; border-radius: 0 0 15px 15px; margin-bottom: 18px; }
+    .back-btn { position: fixed; left: 12px; top: 72px; }
+  </style>
+</head>
+<body>
+  <div class="app-sidebar">
+    <h1>BREAKWAY<br>ADMIN</h1>
+  </div>
+  <div class="page-content">
+    <div class="card" style="max-width: 900px; width: 95%; text-align: left;">
+      <div class="card-header" style="text-align: center;">
+        <h1>Admin Dashboard</h1>
+      </div>
+      <div class="admin-section" id="statsSection">
+        <span class="stat" id="userCount">Users: —</span>
+        <span class="stat" id="orderCount">Orders: —</span>
+      </div>
+      <div class="admin-section">
+        <h3>All Users</h3>
+        <div class="form-group" style="margin-bottom: 15px;">
+          <label for="userSearch" style="display: none;">Search Users</label>
+          <input type="text" id="userSearch" placeholder="🔍 Search by name, email, or ID..." style="padding: 10px; background: rgba(255,255,255,0.08);">
+        </div>
+        <table id="usersTable">
+          <thead>
+            <tr><th>Name</th><th>Contact</th><th>KYC Status</th><th>Actions</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <div class="pagination-controls" id="userPagination">
+          <button class="btn ghost" data-page="prev">Previous</button>
+          <span class="page-info">Page 1</span>
+          <button class="btn ghost" data-page="next">Next</button>
+        </div>
+      </div>
+      <div class="admin-section">
+        <h3>All Orders</h3>
+        <div class="form-group" style="margin-bottom: 15px;">
+          <label for="orderSearch" style="display: none;">Search Orders</label>
+          <input type="text" id="orderSearch" placeholder="🔍 Search by order ID or user ID..." style="padding: 10px; background: rgba(255,255,255,0.08);">
+        </div>
+        <table id="ordersTable">
+          <thead>
+            <tr><th>Order ID</th><th>User ID</th><th>Cylinder</th><th>Qty</th><th>Address</th><th>Date</th><th>Total</th><th>Status</th><th>Actions</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <div class="pagination-controls" id="orderPagination">
+          <button class="btn ghost" data-page="prev">Previous</button>
+          <span class="page-info">Page 1</span>
+          <button class="btn ghost" data-page="next">Next</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    // Add a toast function for admin pages
+    const showToast = (message, type = "success") => { const toast = document.createElement("div"); toast.className = `toast ${type}`; toast.textContent = message; document.body.appendChild(toast); setTimeout(() => { toast.style.opacity = "0"; setTimeout(() => toast.remove(), 400); }, 2500); };
+    document.addEventListener('DOMContentLoaded', async () => {
+      const usersTbody = document.querySelector('#usersTable tbody');
+      const ordersTbody = document.querySelector('#ordersTable tbody');
+      const userCountEl = document.getElementById('userCount');
+      const orderCountEl = document.getElementById('orderCount');
+
+      function escapeHtml(s) {
+        if (!s) return '';
+        return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+      }
+
+      let allUsers = JSON.parse(localStorage.getItem('users') || '[]');
+      let allOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+      let currentUserPage = 1;
+      let currentOrderPage = 1;
+      const limit = 5; // Show 5 items per page
+
+      userCountEl.textContent = 'Users: ' + allUsers.length;
+      orderCountEl.textContent = 'Orders: ' + allOrders.length;
+
+      function renderUsers(usersToRender) {
+        const pageUsers = usersToRender.slice((currentUserPage - 1) * limit, currentUserPage * limit);
+        usersTbody.innerHTML = pageUsers.map(u => `
+          <tr>
+            <td>
+              ${escapeHtml(u.name)}<br><small>${escapeHtml(u.id)}</small>
+              ${u.kycStatus === 'slot-booked' && u.verificationSlot ? `<div style="font-size:12px; color: var(--accent-strong); margin-top:4px;">Slot: ${escapeHtml(u.verificationSlot.date)} (${escapeHtml(u.verificationSlot.time)})</div>` : ''}
+            </td>
+            <td>${escapeHtml(u.mobile || u.email) || '-'}</td>
+            <td><span class="status status-${u.kycStatus || 'pending'}">${escapeHtml(u.kycStatus || 'pending')}</span></td>
+            <td>
+              ${['pending', 'submitted', 'slot-booked'].includes(u.kycStatus || 'pending') ? `
+                <button class="btn-approve" data-user-id="${u.id}">Approve</button>
+                <button class="btn-reject" data-user-id="${u.id}">Reject</button>
+              ` : '-'}
+            </td>
+          </tr>
+        `).join('');
+        attachUserActionListeners();
+        updatePagination('userPagination', currentUserPage, usersToRender.length);
+      }
+
+      function renderOrders(ordersToRender) {
+        const pageOrders = ordersToRender.slice().reverse().slice((currentOrderPage - 1) * limit, currentOrderPage * limit);
+        ordersTbody.innerHTML = pageOrders.map(o => `
+            <tr>
+              <td>${escapeHtml(o.id)}</td>
+              <td>${escapeHtml(o.userId)}</td>
+              <td>${escapeHtml(o.cylinderType)}</td>
+              <td>${escapeHtml(o.quantity)}</td>
+              <td>${escapeHtml(o.address)}</td>
+              <td>${o.deliveryDate ? escapeHtml(o.deliveryDate) : '-'}</td>
+              <td>${o.totalAmount ? `₹${o.totalAmount}` : '-'}</td>
+              <td><span class="status">${escapeHtml(o.status)}</span></td>
+              <td>
+                ${
+                  (o.status !== 'delivered' && o.status !== 'cancelled') ? `
+                    <select class="order-status-changer" data-order-id="${o.id}">
+                      <option value="" disabled selected>Change Status</option>
+                      ${o.status === 'placed' ? '<option value="processing">Processing</option>' : ''}
+                      ${o.status === 'processing' ? '<option value="out-for-delivery">Out for Delivery</option>' : ''}
+                      ${o.status === 'out-for-delivery' ? '<option value="delivered">Delivered</option>' : ''}
+                      <option value="cancelled">Cancel</option>
+                    </select>
+                  ` : '-'
+                }
+              </td>
+            </tr>
+        `).join('');
+        attachOrderActionListeners();
+        updatePagination('orderPagination', currentOrderPage, ordersToRender.length);
+      }
+
+      function updatePagination(containerId, page, total) {
+        const container = document.getElementById(containerId);
+        const pageInfo = container.querySelector('.page-info');
+        const prevBtn = container.querySelector('[data-page="prev"]');
+        const nextBtn = container.querySelector('[data-page="next"]');
+        const totalPages = Math.ceil(total / limit);
+        pageInfo.textContent = `Page ${page} of ${totalPages || 1}`;
+        prevBtn.disabled = page <= 1;
+        nextBtn.disabled = page >= totalPages;
+      }
+
+      function attachUserActionListeners() {
+        usersTbody.querySelectorAll('.btn-approve, .btn-reject').forEach(button => {
+          button.addEventListener('click', (e) => {
+            const userId = e.target.dataset.userId;
+            const action = e.target.classList.contains('btn-approve') ? 'verified' : 'rejected';
+            
+            const userIndex = allUsers.findIndex(u => u.id === userId);
+            if (userIndex !== -1) {
+              allUsers[userIndex].kycStatus = action;
+              localStorage.setItem('users', JSON.stringify(allUsers));
+              showToast(`User ${action}.`, 'success');
+              
+              // Re-render the current view
+              const searchTerm = document.getElementById('userSearch').value.toLowerCase();
+              const filteredUsers = allUsers.filter(u =>
+                (u.name && u.name.toLowerCase().includes(searchTerm)) ||
+                (u.email && u.email.toLowerCase().includes(searchTerm)) ||
+                (u.id && u.id.toLowerCase().includes(searchTerm))
+              );
+              renderUsers(filteredUsers);
+            }
+          });
+        });
+      }
+
+      function attachOrderActionListeners() {
+        ordersTbody.querySelectorAll('.btn-cancel').forEach(button => {
+          button.addEventListener('click', (e) => {
+            const orderId = e.target.dataset.orderId;
+            if (!confirm(`Are you sure you want to cancel order ${orderId}?`)) return;
+
+            const orderIndex = allOrders.findIndex(o => o.id === orderId);
+            if (orderIndex !== -1) {
+              allOrders[orderIndex].status = 'cancelled';
+              localStorage.setItem('orders', JSON.stringify(allOrders));
+              showToast('Order cancelled.', 'success');
+              renderOrders(allOrders); // Re-render orders
+            }
+          });
+        });
+
+        ordersTbody.querySelectorAll('.order-status-changer').forEach(select => {
+          select.addEventListener('change', (e) => {
+            const orderId = e.target.dataset.orderId;
+            const newStatus = e.target.value;
+
+            const orderIndex = allOrders.findIndex(o => o.id === orderId);
+            if (orderIndex !== -1) {
+              allOrders[orderIndex].status = newStatus;
+              localStorage.setItem('orders', JSON.stringify(allOrders));
+              showToast(`Order ${orderId} status updated to ${newStatus}.`, 'success');
+              renderOrders(allOrders); // Re-render orders to reflect the change
+            }
+          });
+        });
+      }
+
+      // Initial Render
+      renderUsers(allUsers);
+      renderOrders(allOrders);
+
+      // Search functionality
+      document.getElementById('userSearch').addEventListener('input', (e) => {
+        const searchTerm = e.target.value.toLowerCase();
+        const filteredUsers = allUsers.filter(u =>
+          (u.name && u.name.toLowerCase().includes(searchTerm)) ||
+          (u.email && u.email.toLowerCase().includes(searchTerm)) ||
+          (u.id && u.id.toLowerCase().includes(searchTerm))
+        );
+        currentUserPage = 1;
+        renderUsers(filteredUsers);
+      });
+
+      document.getElementById('orderSearch').addEventListener('input', (e) => {
+        const searchTerm = e.target.value.toLowerCase();
+        const filteredOrders = allOrders.filter(o =>
+          (o.id && o.id.toLowerCase().includes(searchTerm)) ||
+          (o.userId && o.userId.toLowerCase().includes(searchTerm))
+        );
+        currentOrderPage = 1;
+        renderOrders(filteredOrders);
+      });
+
+      // Pagination functionality
+      document.getElementById('userPagination').addEventListener('click', (e) => {
+        const searchTerm = document.getElementById('userSearch').value.toLowerCase();
+        const filteredUsers = allUsers.filter(u =>
+          (u.name && u.name.toLowerCase().includes(searchTerm)) ||
+          (u.email && u.email.toLowerCase().includes(searchTerm)) ||
+          (u.id && u.id.toLowerCase().includes(searchTerm))
+        );
+        if (e.target.dataset.page === 'next') {
+          currentUserPage++;
+        } else if (e.target.dataset.page === 'prev') {
+          currentUserPage--;
+        }
+        renderUsers(filteredUsers);
+      });
+
+      document.getElementById('orderPagination').addEventListener('click', (e) => {
+        const searchTerm = document.getElementById('orderSearch').value.toLowerCase();
+        const filteredOrders = allOrders.filter(o =>
+          (o.id && o.id.toLowerCase().includes(searchTerm)) ||
+          (o.userId && o.userId.toLowerCase().includes(searchTerm))
+        );
+        if (e.target.dataset.page === 'next') {
+          currentOrderPage++;
+        } else if (e.target.dataset.page === 'prev') {
+          currentOrderPage--;
+        }
+        renderOrders(filteredOrders);
+      });
+    });
+  </script>
+</body>
+</html>
